@@ -1,15 +1,17 @@
-
 from optparse import Option
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support import expected_conditions
+from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import WebDriverException, TimeoutException,NoSuchElementException, NoSuchWindowException,ElementClickInterceptedException,ElementNotInteractableException
 import random
 import threading
 import time
+from multiprocessing import Pool, cpu_count
+from urllib.parse import urlparse
 
 # Add target URL below: 
 links = [
@@ -17,10 +19,27 @@ links = [
 
 ]
 
+
+search_phrase =[
+
+]
+
+netloc = []
+
+
+
 MAX_LINK_TRAVERSED = 1000
 VISIT_REPEATED_PAGE = False
 BROWSER_HEADLESS = True
 RANDOM_PAGE_CLICKS = 5 
+VISIT_LINK_DOMAIN_LONLY = True
+TEXT_FIELD_SEARCH = True
+EXPAND_SEARCH_PHRASE = True
+
+for uri in links:
+    parsed_uri = urlparse(uri)
+    if parsed_uri.netloc not in  netloc:
+        netloc.append(parsed_uri.netloc)
 
 
 # Launch Chrome browser in headless mode
@@ -37,6 +56,7 @@ thread_pool = list()
 def getlink(link):
     #browser.execute_script("window.open('');")
     #browser.switch_to.window(browser.window_handles[1])
+
     browser.get(link)
     # Network transport takes time. Wait until the page is fully loaded
     def is_ready(browser):
@@ -58,34 +78,62 @@ def getlink(link):
     
     #collect link elements
     
-    elems = browser.find_elements(by=By.TAG_NAME, value="a")
+    elems = browser.find_elements(by = By.XPATH,value = '//a[@href]')
     #elems = browser.find_elements(by=By.XPATH, value='//a[@href]')
     for elem in elems:
         href = elem.get_attribute('href')
         
-        add = 0
-        if href is not None:
-            if len(links) < MAX_LINK_TRAVERSED:
-                if VISIT_REPEATED_PAGE:
-                    links.append(href)
-                else: 
-                    if not href  in links:
+        if href is not None and len(links) < MAX_LINK_TRAVERSED :
+            if VISIT_REPEATED_PAGE:
+                links.append(href)
+                print ("\t", href)
+            else: 
+                if not href  in links:
+                    if VISIT_LINK_DOMAIN_LONLY:
+                        parsed_url = urlparse(href)
+                        if parsed_url.netloc in netloc:
+                            links.append(href)
+                            print ("\t", href)
+                    else:       
                         links.append(href)
+                        print ("\t", href)
+                    
+                    
+    
+
+    if TEXT_FIELD_SEARCH:
+        try:
+            search_fields =  browser.find_elements(by = By.XPATH,value = '//input[@id="SearchKeyword"]') 
+            if search_fields is not None:         
+                text_field = random.choice(search_fields )
+                text_key = random.choice(search_phrase)
+                WebDriverWait(browser,20).until(expected_conditions.element_to_be_clickable(text_field))
+                WebDriverWait(browser, 10).until(is_ready)
+                text_field.send_keys(text_key,Keys.ENTER)
+                print("Send text: ", text_key)
+            #text_field.send_keys(Keys.ENTER)
+
+        except ElementNotInteractableException:
+            pass
+        except StaleElementReferenceException:            
+            pass
     # Random page clicks
     if RANDOM_PAGE_CLICKS > 0:
         for clicks in range (RANDOM_PAGE_CLICKS):
             try:
-                elements = browser.find_elements(by = By.XPATH,value = '//*[@id]') #Finds all elements in the page
+                elements = browser.find_elements(by = By.XPATH,value = '//a[@id]//input[@type="checkbox"]//span[@class]') #Finds all elements in the page
                 element = random.choice(elements) #Selects a random element from the list of elements
                 element.click() #Clicks on the selected element 
                 browser.execute_script("arguments[0].click();", element) #javescript click
 
             except Exception:
-                continue
+                continue        
+
+
 
 for count,link in enumerate(links):
     # Load web page
-    print(count,end=' ')
+    print(count,"(of ",len(links),")",end=' ')
     try:
         
         thread = threading.Thread(target=getlink, args=(link,), name=f'Thread_{count}')
@@ -93,10 +141,14 @@ for count,link in enumerate(links):
         thread.start()
         thread_pool.append(thread)
         
+        thread.join(timeout = 10)
+        """
         for t in thread_pool:
             t.join(timeout = 10)
-        
-        
+        """
+
+       
+            
     except WebDriverException:
         browser.close(         
         )
@@ -124,3 +176,5 @@ for count,link in enumerate(links):
         
 # Close the browser on
 browser.close()
+for link in links:
+    print(link)
