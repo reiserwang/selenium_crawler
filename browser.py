@@ -50,11 +50,11 @@ for uri in links:
 
 if BROWSER == 'Chrome':
     from webdriver_manager.chrome import ChromeDriverManager
-    from selenium.webdriver.chrome.service import ChromeService
+    from selenium.webdriver.chrome.service import Service
     options = webdriver.ChromeOptions()
     if BROWSER_HEADLESS:
         options.add_argument("headless")
-    browser = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
+    browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
     
 elif BROWSER == 'Edge':
     from selenium.webdriver.edge.options import Options
