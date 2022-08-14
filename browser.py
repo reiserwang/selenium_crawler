@@ -38,9 +38,9 @@ RANDOM_PAGE_CLICKS = 3
 VISIT_LINK_DOMAIN_LONLY = True
 TEXT_FIELD_SEARCH = False
 EXPAND_SEARCH_PHRASE = True
-XPATH_URL_CRAWLER = "//a[@href]"
-XPATH_SEARCH_TEXT_INPUT = "//input[@id="SearchKeyword"]"
-XPATH_PAGE_CLICK = "//a[@href]"
+XPATH_URL_CRAWLER = "//a[not(contains(href,'javascript'))]"
+XPATH_SEARCH_TEXT_INPUT = "//input[@id='SearchKeyword']"
+XPATH_PAGE_CLICK = "//a[@href] | //input[@type='checkbox']"
 
 for uri in links:
     parsed_uri = urlparse(uri)
