@@ -3,8 +3,6 @@ from optparse import Option
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import WebDriverException, TimeoutException,NoSuchElementException, NoSuchWindowException,ElementClickInterceptedException,ElementNotInteractableException, StaleElementReferenceException
@@ -48,12 +46,21 @@ for uri in links:
         netloc.append(parsed_uri.netloc)
 
 
-# Launch Chrome browser in headless mode
-options = webdriver.ChromeOptions()
+# Launch selected  browser 
 
-browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-if BROWSER_HEADLESS:
-    options.add_argument("headless")
+if BROWSER == 'Chrome':
+    from webdriver_manager.chrome import ChromeDriverManager
+    from selenium.webdriver.chrome.service import ChromeService
+    options = webdriver.ChromeOptions()
+    if BROWSER_HEADLESS:
+        options.add_argument("headless")
+    browser = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
+    
+elif BROWSER == 'Edge':
+    from selenium.webdriver.edge.options import Options
+    from webdriver_manager.microsoft import EdgeChromiumDriverManager
+    from selenium.webdriver.edge.service import Service as EdgeService
+    browser = webdriver.Edge(service=EdgeService(EdgeChromiumDriverManager().install()))
 
 
 
