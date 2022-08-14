@@ -28,7 +28,7 @@ search_phrase =[
 netloc = []
 
 
-
+BROWSER = 'Chrome'
 MAX_LINK_TRAVERSED = 1000
 VISIT_REPEATED_PAGE = False
 BROWSER_HEADLESS = True
