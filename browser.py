@@ -178,15 +178,24 @@ for count,link in enumerate(links):
     except WebDriverException:
         browser.close(         
         )
-        browser = webdriver.Chrome(ChromeDriverManager().install())
+        if BROWSER == "Chrome":
+            browser = webdriver.Chrome(ChromeDriverManager().install())
+        if BROWSER == "Edge":
+            browser = webdriver.Edge(service=EdgeService(EdgeChromiumDriverManager().install()))
         continue
     
     except NoSuchWindowException:
-        browser = webdriver.Chrome(ChromeDriverManager().install())
+        if BROWSER == "Chrome":
+            browser = webdriver.Chrome(ChromeDriverManager().install())
+        if BROWSER == "Edge":
+            browser = webdriver.Edge(service=EdgeService(EdgeChromiumDriverManager().install()))
         continue
     
     except NoSuchWindowException:
-        browser = webdriver.Chrome(ChromeDriverManager().install())
+        if BROWSER == "Chrome":
+            browser = webdriver.Chrome(ChromeDriverManager().install())
+        if BROWSER == "Edge":
+            browser = webdriver.Edge(service=EdgeService(EdgeChromiumDriverManager().install()))
         continue
     
     
