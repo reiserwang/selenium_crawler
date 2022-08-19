@@ -7,10 +7,9 @@ from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import WebDriverException, TimeoutException,NoSuchElementException, NoSuchWindowException,ElementClickInterceptedException,ElementNotInteractableException, StaleElementReferenceException
 import random
-
+import logging
 import time
-from urllib.parse import urlparse
-from urllib.parse import urlsplit
+from urllib.parse import urlparse, urlsplit, urljoin
 
 # Add target URL below: 
 links = [
@@ -36,10 +35,14 @@ VISIT_LINK_DOMAIN_LONLY = True
 TEXT_FIELD_SEARCH = True
 LINK_ON_SEARCH_RESULTS = True
 EXPAND_SEARCH_PHRASE = True
+PERFORMANCE_CALC = False
+REMOVE_QUERY_STRING = True
+REMOVE_UTM＿QUERY_STRING = True
 #XPATH_URL_CRAWLER = "//a[not(contains(href,'javascript'))]"
 XPATH_URL_CRAWLER = "//a[@href]"
 XPATH_SEARCH_TEXT_INPUT = "//div[@class='index-search']//input[@id='SearchKeyword']"
 XPATH_PAGE_CLICK = "//a[@href] | //input[@type='checkbox']"
+JStyle = "10px solid red"
 
 def getlink(link):
     try:
@@ -55,39 +58,61 @@ def getlink(link):
         browser.execute_script("window.scrollTo(0, document.body.scrollHeight);")
         browser.implicitly_wait(10)
         WebDriverWait(browser, 10).until(is_ready)
-        navigationStart = browser.execute_script("return window.performance.timing.navigationStart")
-        responseStart = browser.execute_script("return window.performance.timing.responseStart")
-        domComplete = browser.execute_script("return window.performance.timing.domComplete")
 
-        backendPerformance_calc = responseStart - navigationStart
-        frontendPerformance_calc = domComplete - responseStart
-        print(link,"Back End: %s" % backendPerformance_calc,"Front End: %s" % frontendPerformance_calc, "Threads: %s" % threading.active_count() )
+        if PERFORMANCE_CALC:
+            navigationStart = browser.execute_script("return window.performance.timing.navigationStart")
+            responseStart = browser.execute_script("return window.performance.timing.responseStart")
+            domComplete = browser.execute_script("return window.performance.timing.domComplete")
+
+            backendPerformance_calc = responseStart - navigationStart
+            frontendPerformance_calc = domComplete - responseStart
+            logging.info(link,"Back End: %s" % backendPerformance_calc,"Front End: %s" % frontendPerformance_calc )
         
+
         #collect link elements
         
         elems = browser.find_elements(by = By.XPATH,value = XPATH_URL_CRAWLER)
         #elems = browser.find_elements(by=By.XPATH, value='//a[@href]')
-        for elem in elems:        
+        for elem in elems: 
+            #browser.execute_script("arguments[0].style.border=" + JSStyle, element)       
             href = urlsplit(elem.get_attribute('href')).geturl()
+            if REMOVE_QUERY_STRING:
+                urljoin(href, urlparse(href).path)
+            """
+            if REMOVE_UTM＿QUERY_STRING:
+                parsed_url = list(urlparse(href))
+                print(parsed_url)
+                parsed_url[4] = '&'.join(
+                    [x for x in parsed_url[4].split('&') if not re.match(r'utm_', x)])
+                href= urlunparse(parsed_url)
+            """
             if ".pdf" in href:
                 continue
+            
             if href and len(links) < MAX_LINK_TRAVERSED :
                 if VISIT_REPEATED_PAGE:
                     links.append(href)
-                    print ("\t", href)
+                    logging.info("\t", href)
                 else: 
                     if not href  in links:
                         if VISIT_LINK_DOMAIN_LONLY:
                             parsed_url = urlparse(href)
                             if parsed_url.netloc in netloc:
                                 links.append(href)
-                                print ("\t", href)
+                                logging.info("\t", href)
                         else:       
                             links.append(href)
-                            print ("\t", href)
+                            logging.info("\t", href)
                         
                         
-        
+        #find h2 keywords
+        elems = browser.find_elements(by = By.XPATH,value = "//h2")
+        for elem in elems: 
+            kw=elem.get_attribute('value').strip()
+            if kw not in search_phrase:
+                search_phase.append(kw)
+            logging.debug("\t keyword found:", kw)
+            
         # input phrase in search text
         if TEXT_FIELD_SEARCH:
             search_field = []
@@ -101,7 +126,7 @@ def getlink(link):
                     
                     search_field.send_keys(text_key,Keys.ENTER)
                     WebDriverWait(browser, 10).until(is_ready)
-                    print("\tSend text: ", text_key," in search.")
+                    logging.debug("\tSend text: ", text_key," in search.")
 
                     if LINK_ON_SEARCH_RESULTS:
                         WebDriverWait(browser, 10).until(is_ready)
@@ -110,15 +135,17 @@ def getlink(link):
                         if elements: 
                             for click in range(RANDOM_PAGE_CLICKS):
                                 element = random.choice(elements) #Selects a random element from the list of elements
-                                
+                                browser.execute_script("arguments[0].style.border=" + JSStyle, element)
                                 browser.implicitly_wait(30)
                                 WebDriverWait(browser, 10).until(expected_conditions.element_to_be_clickable(element))
                                 element.click() #Clicks on the selected element
-                                print("Clicked on search results.")
+                                logging.debug("Clicked on search results.")
 
             except ElementNotInteractableException:
+                logging.exception()
                 pass
-            except StaleElementReferenceException:            
+            except StaleElementReferenceException:
+                logging.exception()           
                 pass
         # Random page clicks
         if RANDOM_PAGE_CLICKS:
@@ -128,30 +155,35 @@ def getlink(link):
                 if elements: 
                     for click in range(RANDOM_PAGE_CLICKS):
                         element = random.choice(elements) #Selects a random element from the list of elements
-                        
+                        browser.execute_script("arguments[0].style.border=" + JSStyle, element)
                         browser.implicitly_wait(30)
                         WebDriverWait(browser, 10).until(expected_conditions.element_to_be_clickable(element))
-                        element.click() #Clicks on the selected element
 
-                
+                        element.click() #Clicks on the selected element
+               
                                 
                 #browser.execute_script("arguments[0].click();", element) #javescript click
-                print('\tSent click(s)')
+                logging.info('\tSent click(s)')
 
             except ElementNotInteractableException:
+                logging.exception()
                 pass
-            except StaleElementReferenceException:            
+            except StaleElementReferenceException: 
+                logging.exception()         
                 pass        
     except WebDriverException:
+        logging.exception()
         pass    
 
             
 if __name__ == '__main__':
+
+    logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
+
     for uri in links:
         parsed_uri = urlparse(uri)
         if parsed_uri.netloc not in  netloc:
             netloc.append(parsed_uri.netloc)
-
 
     # Launch selected  browser 
 
@@ -169,7 +201,7 @@ if __name__ == '__main__':
         from selenium.webdriver.edge.service import Service as EdgeService
         browser = webdriver.Edge(service=EdgeService(EdgeChromiumDriverManager().install()))
 
-    windows_before = browser.current_window_handle
+
 
 
     thread_pool = list()
@@ -179,14 +211,19 @@ if __name__ == '__main__':
 
         
         # Load web page
-        print(count,"(of ",len(links),")",end=' ')
-        if ".pdf" in link:
-            next()
+        logging.debug(count,"(of",len(links),")")
+        
         try:
             getlink(link)
-
+            """
+            thread = threading.Thread(target=getlink, args=(link,), name=f'Thread_{count}')
+            thread_pool.append(thread)
+            thread.start()
+            thread_pool.append(thread) 
+            """         
                 
         except WebDriverException:
+            logging.exception()
             browser.close(         
             )
             if BROWSER == "Chrome":
@@ -196,6 +233,7 @@ if __name__ == '__main__':
             continue
         
         except NoSuchWindowException:
+            logging.exception()
             if BROWSER == "Chrome":
                 browser = webdriver.Chrome(ChromeDriverManager().install())
             if BROWSER == "Edge":
@@ -203,6 +241,7 @@ if __name__ == '__main__':
             continue
         
         except NoSuchWindowException:
+            logging.exception()
             if BROWSER == "Chrome":
                 browser = webdriver.Chrome(ChromeDriverManager().install())
             if BROWSER == "Edge":
@@ -211,17 +250,18 @@ if __name__ == '__main__':
         
         
         except ElementClickInterceptedException:
+            logging.exception()
+        
             continue
         except ElementNotInteractableException:
+            logging.exception()
             continue
         except TimeoutException:
+            logging.exception()
             continue
         except Exception:
             continue
     # Close the browser on
     browser.close()
     for link in links:
-        print(link)
-
-            
-
+        logging.info(link)
